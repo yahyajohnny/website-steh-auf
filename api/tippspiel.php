@@ -95,7 +95,6 @@ if ($tipDeInt < 0 || $tipDeInt > 20 || $tipEcInt < 0 || $tipEcInt > 20) {
 }
 
 try {
-    $newsletter = cleverreachSubscribe($email);
     $result = tippspielAddEntry([
         'first_name'    => $firstName,
         'last_name'     => $lastName,
@@ -103,7 +102,7 @@ try {
         'tip_de'        => $tipDeInt,
         'tip_ec'        => $tipEcInt,
         'tip_display'   => $tipDeInt . ':' . $tipEcInt,
-        'newsletter_ok' => $newsletter['ok'],
+        'newsletter_ok' => false,
     ]);
 } catch (Throwable $e) {
     http_response_code(500);
@@ -117,12 +116,21 @@ if (!$result['ok']) {
     exit;
 }
 
-$message = $result['message'];
-if (!$newsletter['ok']) {
-    $message .= ' Hinweis: Newsletter-Anmeldung konnte gerade nicht ausgelöst werden – dein Tipp wurde trotzdem gespeichert.';
+$newsletter = cleverreachSubscribe($email, $firstName, $lastName, 'steh-auf.com/tippspiel');
+
+if (!empty($result['entry']['id'])) {
+    tippspielSetNewsletterOk((string) $result['entry']['id'], $newsletter['ok']);
+}
+
+if ($newsletter['ok']) {
+    $message = 'Dein Tipp ist eingegangen. Wir melden uns per E-Mail, wenn du gewonnen hast.';
+} else {
+    $message = 'Dein Tipp ist eingegangen. Wir melden uns per E-Mail, wenn du gewonnen hast.';
 }
 
 echo json_encode([
-    'ok'      => true,
-    'message' => $message,
+    'ok'            => true,
+    'newsletter_ok' => $newsletter['ok'],
+    'message'       => $message,
+    'tip_message'   => $message,
 ], JSON_UNESCAPED_UNICODE);

@@ -2,10 +2,16 @@
 declare(strict_types=1);
 
 /**
+ * Empfänger in CleverReach speichern – ohne Bestätigungsmail.
+ *
  * @return array{ok: bool, message: string}
  */
-function cleverreachSubscribe(string $email): array
-{
+function cleverreachSubscribe(
+    string $email,
+    string $firstName = '',
+    string $lastName = '',
+    string $source = 'steh-auf.com'
+): array {
     $configFile = dirname(__DIR__) . '/cleverreach.config.php';
     if (!is_readable($configFile)) {
         return ['ok' => false, 'message' => 'Newsletter nicht konfiguriert.'];
@@ -15,9 +21,8 @@ function cleverreachSubscribe(string $email): array
     $clientId = trim((string) ($config['client_id'] ?? ''));
     $clientSecret = trim((string) ($config['client_secret'] ?? ''));
     $listId = (int) ($config['list_id'] ?? 0);
-    $formId = trim((string) ($config['form_id'] ?? ''));
 
-    if ($clientId === '' || $clientSecret === '' || $listId <= 0 || $formId === '') {
+    if ($clientId === '' || $clientSecret === '' || $listId <= 0) {
         return ['ok' => false, 'message' => 'CleverReach-Konfiguration unvollständig.'];
     }
 
@@ -35,15 +40,24 @@ function cleverreachSubscribe(string $email): array
 
     $token = $tokenRes['body']['access_token'];
 
+    $receiverBody = [
+        'email'      => $email,
+        'registered' => time(),
+        'activated'  => 1,
+        'source'     => $source,
+    ];
+
+    if ($firstName !== '' || $lastName !== '') {
+        $receiverBody['global_attributes'] = [
+            'firstname' => $firstName,
+            'lastname'  => $lastName,
+        ];
+    }
+
     $addRes = crTippspielRequest(
         'POST',
         $apiBase . '/v3/groups.json/' . $listId . '/receivers',
-        [
-            'email'      => $email,
-            'registered' => time(),
-            'activated'  => 0,
-            'source'     => 'steh-auf.com/tippspiel',
-        ],
+        $receiverBody,
         $token
     );
 
@@ -54,30 +68,7 @@ function cleverreachSubscribe(string $email): array
         return ['ok' => false, 'message' => 'Newsletter-Anmeldung konnte nicht gespeichert werden.'];
     }
 
-    $userIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
-    if (str_contains($userIp, ',')) {
-        $userIp = trim(explode(',', $userIp)[0]);
-    }
-
-    $activateRes = crTippspielRequest(
-        'POST',
-        $apiBase . '/v3/forms.json/' . $formId . '/send/activate',
-        [
-            'email'   => $email,
-            'doidata' => [
-                'user_ip'    => $userIp,
-                'referer'    => $_SERVER['HTTP_REFERER'] ?? 'https://www.steh-auf.com/tippspiel/',
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-            ],
-        ],
-        $token
-    );
-
-    if ($activateRes['status'] !== 200 && $activateRes['status'] !== 201) {
-        return ['ok' => false, 'message' => 'Bestätigungsmail konnte nicht versendet werden.'];
-    }
-
-    return ['ok' => true, 'message' => 'Newsletter-Anmeldung ausgelöst.'];
+    return ['ok' => true, 'message' => 'Newsletter-Anmeldung gespeichert.'];
 }
 
 function crTippspielRequest(string $method, string $url, ?array $body = null, ?string $token = null): array

@@ -225,3 +225,55 @@ function tippspielDeleteById(string $id): array
         fclose($fp);
     }
 }
+
+function tippspielSetNewsletterOk(string $id, bool $ok): void
+{
+    $id = trim($id);
+    if ($id === '') {
+        return;
+    }
+
+    $file = tippspielDataFile();
+    tippspielEnsureDataFile($file);
+
+    $fp = fopen($file, 'c+');
+    if ($fp === false) {
+        return;
+    }
+
+    try {
+        if (!flock($fp, LOCK_EX)) {
+            return;
+        }
+
+        rewind($fp);
+        $raw = stream_get_contents($fp);
+        $data = json_decode($raw ?: '[]', true);
+        if (!is_array($data)) {
+            flock($fp, LOCK_UN);
+            return;
+        }
+
+        foreach ($data as &$row) {
+            if ((string) ($row['id'] ?? '') === $id) {
+                $row['newsletter_ok'] = $ok;
+                break;
+            }
+        }
+        unset($row);
+
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            flock($fp, LOCK_UN);
+            return;
+        }
+
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, $json . "\n");
+        fflush($fp);
+        flock($fp, LOCK_UN);
+    } finally {
+        fclose($fp);
+    }
+}

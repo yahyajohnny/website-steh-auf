@@ -131,7 +131,7 @@ function initTippspiel() {
       if (successEl) {
         successEl.hidden = false;
         const msg = successEl.querySelector('.tippspiel-success-text');
-        if (msg) msg.textContent = data.message;
+        if (msg) msg.textContent = data.message || data.tip_message || 'Dein Tipp ist eingegangen. Wir melden uns per E-Mail, wenn du gewonnen hast.';
       }
     } catch (err) {
       setStatus(statusEl, err.message || 'Etwas ist schiefgelaufen. Bitte erneut versuchen.', 'error');
