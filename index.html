@@ -183,6 +183,7 @@
             <li><a href="index.html#team">Team</a></li>
             <li><a href="index.html#supporter">Supporter</a></li>
             <li><a href="index.html#faq">FAQ</a></li>
+            <li><a href="index.html#newsletter">Newsletter</a></li>
           </ul>
         </li>
         <li class="nav-item"><a href="firmenevents/index.html">Firmenevents</a></li>
@@ -215,6 +216,7 @@
       <a href="index.html#team">Team</a>
       <a href="index.html#supporter">Supporter</a>
       <a href="index.html#faq">FAQ</a>
+      <a href="index.html#newsletter">Newsletter</a>
     </div>
     <a href="firmenevents/index.html" class="nav-overlay-top">Firmenevents</a>
     <div class="nav-overlay-group">
@@ -710,22 +712,6 @@
             </p>
             <a href="https://lacueva.bar/" class="supporter-link" target="_blank" rel="noopener noreferrer">lacueva.bar →</a>
           </li>
-          <li class="supporter-card reveal reveal-delay-3">
-            <a
-              href="https://www.kaspercom.de/"
-              class="supporter-logo-link"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Kasper Communications – Website öffnen"
-            >
-              <img src="assets/supporter/kaspercom.png" width="320" height="120" alt="Kasper Communications GmbH" loading="lazy" />
-            </a>
-            <h3 class="supporter-name">Kasper Communications GmbH</h3>
-            <p class="supporter-text">
-              Beraten uns bei Marketing, Veranstaltungen, Konzeption und allem, was eine Show nach außen trägt.
-            </p>
-            <a href="https://www.kaspercom.de/" class="supporter-link" target="_blank" rel="noopener noreferrer">kaspercom.de →</a>
-          </li>
         </ul>
         <div class="supporter-cta reveal">
           <p class="supporter-cta-text">
@@ -734,6 +720,77 @@
           <div class="supporter-cta-actions">
             <a href="mailto:haha@steh-auf.com?subject=Unterst%C3%BCtzung%20Steh%20auf%20Comedy" class="btn btn-primary">Kontakt aufnehmen</a>
             <a href="https://www.instagram.com/steh_auf_comedy/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Instagram</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="newsletter-section section" id="newsletter" aria-labelledby="newsletter-heading">
+      <div class="container">
+        <div class="newsletter-card reveal">
+          <div class="newsletter-glow" aria-hidden="true"></div>
+          <div class="newsletter-inner">
+            <div class="newsletter-content">
+              <span class="section-label">Newsletter</span>
+              <h2 id="newsletter-heading">Kein Witz verpassen 🎤</h2>
+              <p class="newsletter-lead">
+                Termine, Open-Mic-Infos und das eine oder andere Behind-the-Scenes – direkt in dein Postfach. Kein Spam, kein Drama. Nur Comedy aus Freising &amp; München.
+              </p>
+              <ul class="newsletter-perks" aria-label="Das erwartet dich">
+                <li>
+                  <span class="newsletter-perk-icon" aria-hidden="true">🎟️</span>
+                  <span>Frühe Infos zu neuen Shows &amp; Tickets</span>
+                </li>
+                <li>
+                  <span class="newsletter-perk-icon" aria-hidden="true">😂</span>
+                  <span>Exklusive Einblicke hinter die Kulissen</span>
+                </li>
+                <li>
+                  <span class="newsletter-perk-icon" aria-hidden="true">📅</span>
+                  <span>Open Mic &amp; Specials – du bist immer up to date</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="newsletter-form-wrap">
+              <form id="newsletterForm" class="newsletter-form" novalidate>
+                <label class="newsletter-label" for="newsletterEmail">Deine E-Mail</label>
+                <div class="newsletter-field-row">
+                  <input
+                    type="email"
+                    id="newsletterEmail"
+                    name="email"
+                    class="newsletter-input"
+                    placeholder="deine@email.de"
+                    autocomplete="email"
+                    inputmode="email"
+                    required
+                  />
+                  <button type="submit" class="btn btn-primary newsletter-submit">
+                    Dabei sein
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </button>
+                </div>
+
+                <label class="newsletter-consent">
+                  <input type="checkbox" id="newsletterConsent" name="consent" required />
+                  <span>
+                    Ich möchte den Newsletter erhalten und willige ein, dass meine E-Mail-Adresse an
+                    <a href="datenschutz.html#cleverreach">CleverReach</a> übermittelt wird. Abmeldung jederzeit möglich.
+                  </span>
+                </label>
+
+                <p id="newsletterStatus" class="newsletter-status" role="status" aria-live="polite" hidden></p>
+              </form>
+
+              <div id="newsletterSuccess" class="newsletter-success" hidden>
+                <div class="newsletter-success-emoji" aria-hidden="true">🎉</div>
+                <h3>Fast geschafft!</h3>
+                <p class="newsletter-success-text">
+                  Schau in dein Postfach und bestätige deine Anmeldung per Klick – dann bist du offiziell im Club.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -810,6 +867,7 @@
 
   <script src="config.js" defer></script>
   <script src="main.js" defer></script>
+  <script src="newsletter.js" defer></script>
   <script>
     (function() {
       const CONSENT_KEY = 'sac_cookie_consent';
