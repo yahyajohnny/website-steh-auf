@@ -1,3 +1,5 @@
 .DS_Store
 *.wget-log
 api/cleverreach.config.php
+api/tippspiel.config.php
+api/data/tippspiel.json
