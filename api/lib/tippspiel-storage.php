@@ -162,3 +162,66 @@ function tippspielAddEntry(array $entry): array
         fclose($fp);
     }
 }
+
+/**
+ * @return array{ok: bool, message: string}
+ */
+function tippspielDeleteById(string $id): array
+{
+    $id = trim($id);
+    if ($id === '' || !preg_match('/^[a-f0-9]{16}$/', $id)) {
+        return ['ok' => false, 'message' => 'Ungültige Einreichung.'];
+    }
+
+    $file = tippspielDataFile();
+    tippspielEnsureDataFile($file);
+
+    $fp = fopen($file, 'c+');
+    if ($fp === false) {
+        return ['ok' => false, 'message' => 'Löschen fehlgeschlagen.'];
+    }
+
+    try {
+        if (!flock($fp, LOCK_EX)) {
+            return ['ok' => false, 'message' => 'Speicherung gerade ausgelastet. Bitte erneut versuchen.'];
+        }
+
+        rewind($fp);
+        $raw = stream_get_contents($fp);
+        $data = json_decode($raw ?: '[]', true);
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        $found = false;
+        $filtered = [];
+        foreach ($data as $row) {
+            if ((string) ($row['id'] ?? '') === $id) {
+                $found = true;
+                continue;
+            }
+            $filtered[] = $row;
+        }
+
+        if (!$found) {
+            flock($fp, LOCK_UN);
+            return ['ok' => false, 'message' => 'Einreichung nicht gefunden.'];
+        }
+
+        $json = json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            flock($fp, LOCK_UN);
+            return ['ok' => false, 'message' => 'Löschen fehlgeschlagen.'];
+        }
+
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, $json . "\n");
+        fflush($fp);
+        flock($fp, LOCK_UN);
+
+        return ['ok' => true, 'message' => 'Einreichung gelöscht.'];
+    } finally {
+        fclose($fp);
+    }
+}

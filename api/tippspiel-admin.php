@@ -16,6 +16,7 @@ $config = require $configFile;
 $adminPassword = (string) ($config['admin_password'] ?? '');
 
 $error = '';
+$notice = '';
 $export = isset($_GET['export']) && $_GET['export'] === 'csv';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
@@ -27,6 +28,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
     $error = 'Falsches Passwort.';
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id']) && !empty($_SESSION['tippspiel_admin'])) {
+    try {
+        $result = tippspielDeleteById((string) $_POST['delete_id']);
+        if ($result['ok']) {
+            $_SESSION['tippspiel_notice'] = $result['message'];
+        } else {
+            $_SESSION['tippspiel_error'] = $result['message'];
+        }
+    } catch (Throwable $e) {
+        $_SESSION['tippspiel_error'] = 'Löschen fehlgeschlagen.';
+    }
+    header('Location: tippspiel-admin.php');
+    exit;
+}
+
 if (isset($_GET['logout'])) {
     unset($_SESSION['tippspiel_admin']);
     header('Location: tippspiel-admin.php');
@@ -34,6 +50,16 @@ if (isset($_GET['logout'])) {
 }
 
 $authenticated = !empty($_SESSION['tippspiel_admin']);
+
+if ($authenticated && !empty($_SESSION['tippspiel_notice'])) {
+    $notice = (string) $_SESSION['tippspiel_notice'];
+    unset($_SESSION['tippspiel_notice']);
+}
+
+if ($authenticated && !empty($_SESSION['tippspiel_error'])) {
+    $error = (string) $_SESSION['tippspiel_error'];
+    unset($_SESSION['tippspiel_error']);
+}
 
 if ($authenticated) {
     try {
@@ -129,6 +155,9 @@ if ($authenticated) {
     .btn-secondary { background: var(--navy); }
     .toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
     .error { color: #b00020; margin-bottom: 12px; font-size: 0.9rem; }
+    .notice { color: #0d7a3e; margin-bottom: 12px; font-size: 0.9rem; }
+    .btn-danger { background: #b00020; padding: 6px 10px; font-size: 0.8rem; }
+    .btn-danger:hover { background: #8a0019; }
     .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -161,6 +190,8 @@ if ($authenticated) {
         <a class="btn" href="tippspiel-admin.php?export=csv">CSV exportieren</a>
         <a class="btn btn-secondary" href="tippspiel-admin.php?logout=1">Abmelden</a>
       </div>
+      <?php if ($notice): ?><p class="notice"><?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
+      <?php if ($error): ?><p class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
       <div class="table-wrap">
         <table>
           <thead>
@@ -171,11 +202,12 @@ if ($authenticated) {
               <th>E-Mail</th>
               <th>Tipp</th>
               <th>Newsletter</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <?php if (empty($entries)): ?>
-              <tr><td colspan="6">Noch keine Einreichungen.</td></tr>
+              <tr><td colspan="7">Noch keine Einreichungen.</td></tr>
             <?php else: ?>
               <?php foreach ($entries as $row): ?>
                 <tr>
@@ -185,6 +217,12 @@ if ($authenticated) {
                   <td><?= htmlspecialchars((string) ($row['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string) ($row['tip_display'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
                   <td><?= !empty($row['newsletter_ok']) ? 'ja' : 'nein' ?></td>
+                  <td>
+                    <form method="post" onsubmit="return confirm('Einreichung wirklich löschen?');">
+                      <input type="hidden" name="delete_id" value="<?= htmlspecialchars((string) ($row['id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" />
+                      <button type="submit" class="btn btn-danger">Löschen</button>
+                    </form>
+                  </td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>
