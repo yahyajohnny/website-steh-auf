@@ -1001,6 +1001,106 @@ function initGalleryPreviewLightbox() {
   );
 }
 
+const FAME_IG_SVG =
+  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>';
+
+function shuffleArray(items) {
+  const list = items.slice();
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+function fameInstagramUrl(handle) {
+  return `https://www.instagram.com/${encodeURIComponent(handle)}/`;
+}
+
+function createFameTile(handle) {
+  const safeHandle = handle.replace(/[^a-zA-Z0-9._]/g, '');
+  if (!safeHandle) return '';
+  const src = `assets/wall-of-fame/${safeHandle}.webp`;
+  const url = fameInstagramUrl(safeHandle);
+  return `<a href="${url}" class="fame-tile" target="_blank" rel="noopener noreferrer" aria-label="@${safeHandle} auf Instagram" role="listitem">
+    <img src="${src}" alt="" width="156" height="208" loading="lazy" decoding="async" fetchpriority="low">
+    <span class="fame-tile-ig">${FAME_IG_SVG}</span>
+  </a>`;
+}
+
+function renderFameCarousel(carousel, handles) {
+  carousel.innerHTML = handles.map(createFameTile).join('');
+  requestAnimationFrame(() => {
+    const count = carousel.children.length;
+    if (!count) return;
+    const start = Math.floor(Math.random() * count);
+    carousel.children[start]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+async function loadWallOfFame() {
+  const stage = document.getElementById('fameStage');
+  const carouselWrap = document.getElementById('fameCarouselWrap');
+  const carousel = document.getElementById('fameCarousel');
+  const grid = document.getElementById('fameGrid');
+  const countEl = document.getElementById('fameCount');
+  const countNum = document.getElementById('fameCountNum');
+  if (!stage || !carouselWrap || !carousel || !grid) return;
+
+  let handles = [];
+  try {
+    const res = await fetch('assets/wall-of-fame/index.json');
+    if (res.ok) handles = await res.json();
+  } catch (e) {
+    console.warn('Wall of Fame: JSON nicht geladen');
+  }
+
+  if (!handles.length) {
+    stage.innerHTML = '<p class="fame-loading">Wall of Fame wird geladen …</p>';
+    return;
+  }
+
+  const shuffled = shuffleArray(handles);
+  if (countNum) countNum.textContent = String(shuffled.length);
+  if (countEl) countEl.hidden = false;
+
+  if (prefersReducedMotion()) {
+    carouselWrap.hidden = true;
+    grid.hidden = false;
+    grid.innerHTML = shuffled.map(createFameTile).join('');
+  } else {
+    carouselWrap.hidden = false;
+    grid.hidden = true;
+    renderFameCarousel(carousel, shuffled);
+  }
+
+  initScrollReveal();
+}
+
+function initWallOfFame() {
+  const stage = document.getElementById('fameStage');
+  if (!stage) return;
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          loadWallOfFame();
+        }
+      },
+      { rootMargin: '240px' }
+    );
+    observer.observe(stage);
+  } else {
+    loadWallOfFame();
+  }
+}
+
 async function loadGalleryPreview() {
   const container = document.getElementById('galleryPreview');
   if (!container) return;
@@ -1082,4 +1182,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initShowsLoadMore();
   loadShows();
   loadGalleryPreview();
+  initWallOfFame();
 });

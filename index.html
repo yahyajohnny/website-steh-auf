@@ -174,6 +174,7 @@
             <li><a href="index.html#shows">Nächste Termine</a></li>
             <li><a href="index.html#bisherige-shows">Bisherige Shows</a></li>
             <li><a href="index.html#galerie">Galerie</a></li>
+            <li><a href="index.html#wall-of-fame">Wall of Fame</a></li>
           </ul>
         </li>
         <li class="nav-item nav-has-dropdown">
@@ -181,6 +182,7 @@
           <ul class="nav-dropdown" role="list">
             <li><a href="index.html#ueber-uns">Die Show</a></li>
             <li><a href="index.html#team">Team</a></li>
+            <li><a href="index.html#wall-of-fame">Wall of Fame</a></li>
             <li><a href="index.html#supporter">Supporter</a></li>
             <li><a href="index.html#faq">FAQ</a></li>
             <li><a href="index.html#newsletter">Newsletter</a></li>
@@ -209,11 +211,13 @@
       <a href="index.html#shows">Nächste Termine</a>
       <a href="index.html#bisherige-shows">Bisherige Shows</a>
       <a href="index.html#galerie">Galerie</a>
+      <a href="index.html#wall-of-fame">Wall of Fame</a>
     </div>
     <div class="nav-overlay-group">
       <span class="nav-overlay-label">Über uns</span>
       <a href="index.html#ueber-uns">Die Show</a>
       <a href="index.html#team">Team</a>
+      <a href="index.html#wall-of-fame">Wall of Fame</a>
       <a href="index.html#supporter">Supporter</a>
       <a href="index.html#faq">FAQ</a>
       <a href="index.html#newsletter">Newsletter</a>
@@ -520,6 +524,29 @@
           </article>
 
         </div>
+      </div>
+    </section>
+
+    <section class="fame-section" id="wall-of-fame" aria-labelledby="fame-heading">
+      <div class="container fame-header">
+        <span class="section-label reveal">Wall of Fame</span>
+        <div class="fame-header-row">
+          <div class="fame-header-text">
+            <h2 id="fame-heading" class="reveal reveal-delay-1">Auf unserer Bühne</h2>
+            <p class="fame-sub reveal reveal-delay-2">Comedians, die schon bei uns aufgetreten sind – klick für Instagram.</p>
+          </div>
+          <p class="fame-count reveal reveal-delay-2" id="fameCount" hidden>
+            <span id="fameCountNum">75</span> Künstler:innen
+          </p>
+        </div>
+      </div>
+      <div class="fame-stage reveal reveal-delay-3" id="fameStage" aria-label="Wall of Fame – Comedians auf Instagram">
+        <div class="fame-carousel-wrap" id="fameCarouselWrap" hidden>
+          <div class="fame-spotlight" aria-hidden="true"></div>
+          <div class="fame-carousel" id="fameCarousel" tabindex="0" role="list"></div>
+          <p class="fame-hint" aria-hidden="true">← Wischen · Scrollen →</p>
+        </div>
+        <div class="fame-grid" id="fameGrid" hidden role="list"></div>
       </div>
     </section>
 
