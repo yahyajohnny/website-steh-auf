@@ -1543,6 +1543,35 @@ button.show-cta {
   width: 100%;
 }
 
+.fame-carousel-wrap.is-loading .fame-carousel {
+  min-height: clamp(220px, 32vw, 300px);
+}
+
+.fame-carousel-wrap.is-loading .fame-carousel::before,
+.fame-carousel-wrap.is-loading .fame-carousel::after {
+  content: '';
+  flex: 0 0 clamp(120px, 20vw, 168px);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0.04) 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 70%
+  );
+  background-size: 200% 100%;
+  animation: fame-shimmer 1.4s ease-in-out infinite;
+}
+
+.fame-carousel-wrap.is-loading .fame-carousel::after {
+  animation-delay: 0.2s;
+}
+
+@keyframes fame-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 .fame-spotlight {
   position: absolute;
   inset: 0;

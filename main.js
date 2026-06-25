@@ -1004,6 +1004,18 @@ function initGalleryPreviewLightbox() {
 const FAME_IG_SVG =
   '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>';
 
+let fameHandlesPromise = null;
+let fameMounted = false;
+
+function prefetchFameHandles() {
+  if (!fameHandlesPromise) {
+    fameHandlesPromise = fetch('assets/wall-of-fame/index.json')
+      .then(res => (res.ok ? res.json() : []))
+      .catch(() => []);
+  }
+  return fameHandlesPromise;
+}
+
 function shuffleArray(items) {
   const list = items.slice();
   for (let i = list.length - 1; i > 0; i--) {
@@ -1017,24 +1029,40 @@ function fameInstagramUrl(handle) {
   return `https://www.instagram.com/${encodeURIComponent(handle)}/`;
 }
 
-function createFameTile(handle) {
+function createFameTile(handle, eager = false) {
   const safeHandle = handle.replace(/[^a-zA-Z0-9._]/g, '');
   if (!safeHandle) return '';
   const src = `assets/wall-of-fame/${safeHandle}.webp`;
   const url = fameInstagramUrl(safeHandle);
+  const loading = eager ? 'eager' : 'lazy';
+  const priority = eager ? 'high' : 'low';
   return `<a href="${url}" class="fame-tile" target="_blank" rel="noopener noreferrer" aria-label="@${safeHandle} auf Instagram" role="listitem">
-    <img src="${src}" alt="" width="156" height="208" loading="lazy" decoding="async" fetchpriority="low">
+    <img src="${src}" alt="" width="156" height="208" loading="${loading}" decoding="async" fetchpriority="${priority}">
     <span class="fame-tile-ig">${FAME_IG_SVG}</span>
   </a>`;
 }
 
 function renderFameCarousel(carousel, handles) {
-  carousel.innerHTML = handles.map(createFameTile).join('');
+  const shuffled = shuffleArray(handles);
+  const count = shuffled.length;
+  const start = Math.floor(Math.random() * count);
+  const eagerCount = Math.min(13, count);
+
+  const order = Array.from({ length: count }, (_, i) => (start + i) % count);
+  const firstHtml = order
+    .slice(0, eagerCount)
+    .map(idx => createFameTile(shuffled[idx], true))
+    .join('');
+  carousel.innerHTML = firstHtml;
+
   requestAnimationFrame(() => {
-    const count = carousel.children.length;
-    if (!count) return;
-    const start = Math.floor(Math.random() * count);
-    carousel.children[start]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    if (count > eagerCount) {
+      carousel.insertAdjacentHTML(
+        'beforeend',
+        order.slice(eagerCount).map(idx => createFameTile(shuffled[idx], false)).join('')
+      );
+    }
+    carousel.children[0]?.scrollIntoView({ inline: 'center', block: 'nearest' });
   });
 }
 
@@ -1042,7 +1070,10 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-async function loadWallOfFame() {
+async function mountWallOfFame() {
+  if (fameMounted) return;
+  fameMounted = true;
+
   const stage = document.getElementById('fameStage');
   const carouselWrap = document.getElementById('fameCarouselWrap');
   const carousel = document.getElementById('fameCarousel');
@@ -1051,53 +1082,55 @@ async function loadWallOfFame() {
   const countNum = document.getElementById('fameCountNum');
   if (!stage || !carouselWrap || !carousel || !grid) return;
 
-  let handles = [];
-  try {
-    const res = await fetch('assets/wall-of-fame/index.json');
-    if (res.ok) handles = await res.json();
-  } catch (e) {
-    console.warn('Wall of Fame: JSON nicht geladen');
-  }
+  const handles = await prefetchFameHandles();
 
   if (!handles.length) {
     stage.innerHTML = '<p class="fame-loading">Wall of Fame wird geladen …</p>';
     return;
   }
 
-  const shuffled = shuffleArray(handles);
-  if (countNum) countNum.textContent = String(shuffled.length);
+  if (countNum) countNum.textContent = String(handles.length);
   if (countEl) countEl.hidden = false;
 
   if (prefersReducedMotion()) {
     carouselWrap.hidden = true;
     grid.hidden = false;
-    grid.innerHTML = shuffled.map(createFameTile).join('');
+    grid.innerHTML = shuffleArray(handles).map(h => createFameTile(h, false)).join('');
   } else {
     carouselWrap.hidden = false;
     grid.hidden = true;
-    renderFameCarousel(carousel, shuffled);
+    renderFameCarousel(carousel, handles);
+    carouselWrap.classList.remove('is-loading');
   }
+}
 
-  initScrollReveal();
+function scheduleIdleMount() {
+  const run = () => mountWallOfFame();
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(run, { timeout: 1200 });
+  } else {
+    setTimeout(run, 300);
+  }
 }
 
 function initWallOfFame() {
   const stage = document.getElementById('fameStage');
   if (!stage) return;
 
+  prefetchFameHandles();
+  scheduleIdleMount();
+
   if ('IntersectionObserver' in window) {
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting) {
           observer.disconnect();
-          loadWallOfFame();
+          mountWallOfFame();
         }
       },
-      { rootMargin: '240px' }
+      { rootMargin: '100% 0px' }
     );
     observer.observe(stage);
-  } else {
-    loadWallOfFame();
   }
 }
 
@@ -1170,6 +1203,7 @@ function escAttr(str) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initWallOfFame();
   initPreloader();
   initCursor();
   initNavDropdowns();
@@ -1182,5 +1216,4 @@ document.addEventListener('DOMContentLoaded', () => {
   initShowsLoadMore();
   loadShows();
   loadGalleryPreview();
-  initWallOfFame();
 });
