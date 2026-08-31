@@ -1042,6 +1042,13 @@ function createFameTile(handle, eager = false) {
   </a>`;
 }
 
+function centerFameCarousel(carousel, index = 0) {
+  const tile = carousel.children[index];
+  if (!tile) return;
+  const left = tile.offsetLeft - (carousel.clientWidth - tile.offsetWidth) / 2;
+  carousel.scrollLeft = Math.max(0, left);
+}
+
 function renderFameCarousel(carousel, handles) {
   const shuffled = shuffleArray(handles);
   const count = shuffled.length;
@@ -1056,13 +1063,14 @@ function renderFameCarousel(carousel, handles) {
   carousel.innerHTML = firstHtml;
 
   requestAnimationFrame(() => {
+    centerFameCarousel(carousel, 0);
     if (count > eagerCount) {
       carousel.insertAdjacentHTML(
         'beforeend',
         order.slice(eagerCount).map(idx => createFameTile(shuffled[idx], false)).join('')
       );
+      centerFameCarousel(carousel, 0);
     }
-    carousel.children[0]?.scrollIntoView({ inline: 'center', block: 'nearest' });
   });
 }
 
@@ -1202,7 +1210,16 @@ function escAttr(str) {
   return escHtml(str).replace(/'/g, '&#39;');
 }
 
+function initPageScroll() {
+  if (window.location.hash) return;
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+  window.scrollTo(0, 0);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initPageScroll();
   initWallOfFame();
   initPreloader();
   initCursor();
