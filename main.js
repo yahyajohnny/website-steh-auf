@@ -20,6 +20,7 @@ function getShowsPageStep() {
 
 function getCfg() {
   const d = {
+    eventsApiUrl: 'api/events.php',
     vivenuApiKey: '',
     eventbriteToken: '',
     vivenuSellerIds: [],
@@ -29,6 +30,9 @@ function getCfg() {
   const w = typeof window !== 'undefined' && window.STEH_AUF_CONFIG;
   if (!w || typeof w !== 'object') return d;
   return {
+    eventsApiUrl: w.eventsApiUrl != null && String(w.eventsApiUrl).trim() !== ''
+      ? String(w.eventsApiUrl).trim()
+      : d.eventsApiUrl,
     vivenuApiKey: String(w.vivenuApiKey || '').trim(),
     eventbriteToken: String(w.eventbriteToken || '').trim(),
     vivenuSellerIds: Array.isArray(w.vivenuSellerIds) ? w.vivenuSellerIds.map(String) : [],
@@ -36,12 +40,23 @@ function getCfg() {
   };
 }
 
+/** OHA! Comedy / OHA Comedy – fremde Marke, nicht auf steh-auf.com anzeigen. */
+function isOhaComedyEvent(haystack) {
+  const h = String(haystack || '').toLowerCase();
+  return /\boha[!?]?\s*comedy\b/.test(h) || /\boha-comedy\b/.test(h) || h.includes('oha! comedy') || h.includes('oha comedy');
+}
+
 function textIsStehAufComedy(haystack) {
   const h = String(haystack || '').toLowerCase();
   if (h.includes('backstage')) return false;
+  if (isOhaComedyEvent(h)) return false;
   if (/steh\s*auf|stehauf|steh-auf/ui.test(h)) return true;
   if (/open\s*mic/ui.test(h) && /freising|münchen|muenchen|comedy/ui.test(h)) return true;
   return false;
+}
+
+function excludeOhaFromEvents(events) {
+  return (events || []).filter(e => !isOhaComedyEvent(e && e.name));
 }
 
 function vivenuRowIsBackstage(row) {
@@ -55,6 +70,12 @@ function vivenuRowIsBackstage(row) {
 function vivenuRowMatches(row, sellerAllow, strictFilter) {
   const sid = String(row.sellerId || '').trim();
   const allow = sellerAllow.map(String).map(s => s.trim()).filter(Boolean);
+  const parts = [row.name, row.slogan, row.description];
+  if (Array.isArray(row.tags)) {
+    row.tags.forEach(t => parts.push(typeof t === 'string' ? t : ''));
+  }
+  const blob = parts.join(' ');
+  if (isOhaComedyEvent(blob)) return false;
 
   if (allow.length) {
     if (!sid || !allow.some(a => a === sid)) {
@@ -66,11 +87,7 @@ function vivenuRowMatches(row, sellerAllow, strictFilter) {
   if (!strictFilter) {
     return !vivenuRowIsBackstage(row);
   }
-  const parts = [row.name, row.slogan, row.description];
-  if (Array.isArray(row.tags)) {
-    row.tags.forEach(t => parts.push(typeof t === 'string' ? t : ''));
-  }
-  return textIsStehAufComedy(parts.join(' '));
+  return textIsStehAufComedy(blob);
 }
 
 function ebTextMatches(ev) {
@@ -79,7 +96,8 @@ function ebTextMatches(ev) {
   if (typeof n === 'string') parts.push(n);
   else if (n && n.text) parts.push(n.text);
   if (ev.description && ev.description.text) parts.push(ev.description.text);
-  if (ev.summary && ev.summary.text) parts.push(ev.summary.text);
+  if (typeof ev.summary === 'string') parts.push(ev.summary);
+  else if (ev.summary && ev.summary.text) parts.push(ev.summary.text);
   return textIsStehAufComedy(parts.join(' '));
 }
 
@@ -260,11 +278,11 @@ async function fetchShowsClientSide() {
   };
   const vivenuList = await fetchVivenuEvents(cfg, meta, errors);
   const ebList = await fetchEventbriteEvents(cfg, meta, errors);
-  let events = vivenuList.concat(ebList);
+  let events = excludeOhaFromEvents(vivenuList.concat(ebList));
   events.sort((a, b) => new Date(a.start) - new Date(b.start));
   if (events.length === 0) {
     if (!cfg.vivenuApiKey && !cfg.eventbriteToken) {
-      hints.push('Keine API-Keys: In config.js vivenuApiKey und/oder eventbriteToken eintragen (Vorlage: config.example.js).');
+      hints.push('Keine API-Keys: api/events.config.php anlegen oder in config.js vivenuApiKey/eventbriteToken setzen (Vorlage: config.example.js).');
     }
     const vivenuErr = errors.some(e => String(e).toLowerCase().includes('vivenu'));
     if (cfg.vivenuApiKey && vivenuErr) {
@@ -290,6 +308,50 @@ async function fetchShowsClientSide() {
     }
   }
   return { events, errors, hints, meta };
+}
+
+async function fetchShowsFromServer(apiUrl) {
+  const res = await fetch(apiUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+  if (!res.ok) throw new Error('Events API HTTP ' + res.status);
+  const data = await res.json();
+  const events = excludeOhaFromEvents(Array.isArray(data.events) ? data.events : []);
+  const errors = Array.isArray(data.errors) ? data.errors : [];
+  return { events, errors, hints: [], meta: { source: 'server' } };
+}
+
+/** Preferiert api/events.php (wie Live); Fallback: Browser-Aufrufe mit Keys aus config.js. */
+async function fetchShows() {
+  const cfg = getCfg();
+  const hasClientKeys = !!(cfg.vivenuApiKey || cfg.eventbriteToken);
+
+  if (cfg.eventsApiUrl) {
+    try {
+      const server = await fetchShowsFromServer(cfg.eventsApiUrl);
+      if (server.events.length > 0 || !hasClientKeys) {
+        return server;
+      }
+    } catch (e) {
+      if (!hasClientKeys) {
+        return {
+          events: [],
+          errors: [String(e && e.message ? e.message : e)],
+          hints: ['Server-Events-API nicht erreichbar. api/events.config.php prüfen oder Client-Keys in config.js setzen.'],
+          meta: { source: 'server_error' }
+        };
+      }
+    }
+  }
+
+  if (hasClientKeys) {
+    return fetchShowsClientSide();
+  }
+
+  return {
+    events: [],
+    errors: [],
+    hints: ['Keine Event-Quelle: eventsApiUrl bzw. api/events.config.php oder Client-API-Keys in config.js.'],
+    meta: { source: 'none' }
+  };
 }
 
 function initPreloader() {
@@ -541,12 +603,9 @@ function initParallax() {
 }
 
 function getTicketUrl(event) {
-  if (event.source === 'eventbrite') {
-    return event.ticketUrl || event.url || '';
-  }
-  if (event.url) {
-    return `${SHOP_BASE}/${event.url}`;
-  }
+  if (event.ticketUrl) return String(event.ticketUrl);
+  if (event.source === 'eventbrite') return event.url || '';
+  if (event.url) return `${SHOP_BASE}/${String(event.url).replace(/^\//, '')}`;
   return '';
 }
 
@@ -663,14 +722,14 @@ async function loadShows() {
   if (!grid) return;
   showSkeletons(grid);
   try {
-    const data = await fetchShowsClientSide();
+    const data = await fetchShows();
     if (data.errors && data.errors.length) {
       console.warn('Termine API:', data.errors.join('; '));
     }
     if (data.hints && data.hints.length) {
       console.info('Termine Hinweise:', data.hints.join(' '));
     }
-    allEvents = data.events || [];
+    allEvents = excludeOhaFromEvents(data.events || []);
     const upcoming = allEvents.filter(e => new Date(e.start) >= new Date());
     if (!upcoming.length) {
       hideNextShowCountdown();
